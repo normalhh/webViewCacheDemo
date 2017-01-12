@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/CacheDemo.iml" filepath="$PROJECT_DIR$/CacheDemo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/webViewCacheDemo/webViewCacheDemo.iml" filepath="$PROJECT_DIR$/webViewCacheDemo/webViewCacheDemo.iml" />
+    </modules>
+  </component>
+</project>
