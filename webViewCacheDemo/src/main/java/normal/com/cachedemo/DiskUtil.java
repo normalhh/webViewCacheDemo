@@ -21,10 +21,10 @@ public class DiskUtil {
         File file = new File(SDCardUtils.getSDCardPath() + "/cacheDemo");
 
         if (FileUtils.createOrExistsDir(file)) {
-            Logger.e(file.getAbsolutePath());
+            Logger.d(file.getAbsolutePath());
             return file;
         } else {
-            file.mkdirs();
+            boolean b = file.mkdirs();
         }
 
         return file;

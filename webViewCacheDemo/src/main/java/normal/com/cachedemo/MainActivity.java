@@ -18,6 +18,10 @@ import android.view.ViewGroup;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import com.blankj.utilcode.utils.FileUtils;
+import com.blankj.utilcode.utils.StringUtils;
+import com.orhanobut.logger.Logger;
+
 public class MainActivity extends AppCompatActivity {
 
     private static WebView my_webView;
@@ -63,7 +67,6 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
-
     }
 
 
@@ -119,7 +122,17 @@ public class MainActivity extends AppCompatActivity {
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             my_webView = (WebView) rootView.findViewById(R.id.my_webView);
             initWebView();
-            my_webView.loadUrl(BuildConfig.SERVERURL);
+            String serverUrl = BaseApplication.properties.getProperty("SERVERURL");
+            String loginPage = BaseApplication.properties.getProperty("LOGINPAGE");
+            String cachePath = BaseApplication.properties.getProperty("CACHEPATH");
+            String filePath =  cachePath+ loginPage;
+            if (FileUtils.isFileExists(filePath)) {
+                Logger.d("载入本地的url: " + filePath);
+                my_webView.loadUrl("file://" + filePath);
+            } else {
+                Logger.d("载入网络的Url");
+                my_webView.loadUrl(serverUrl + loginPage);
+            }
 //            TextView textView = (TextView) rootView.findViewById(R.id.section_label);
 //            textView.setText(getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER)));
             return rootView;
@@ -129,7 +142,18 @@ public class MainActivity extends AppCompatActivity {
             WebSettings webSettings = my_webView.getSettings();
             webSettings.setAppCacheEnabled(false);
             webSettings.setJavaScriptEnabled(true);
+            // 设置可以跨域请求
+            webSettings.setAllowUniversalAccessFromFileURLs(true);
             my_webView.setWebViewClient(new CustomWebViewClient());
+        }
+
+        public String getResourcesFileName(String url) {
+            String name = url.substring(url.lastIndexOf("/") + 1, url.length());
+            if (!StringUtils.isEmpty(name)) {
+                return name;
+            } else {
+                return "";
+            }
         }
     }
 
@@ -167,6 +191,14 @@ public class MainActivity extends AppCompatActivity {
                     return "SECTION 3";
             }
             return null;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (my_webView != null) {
+            my_webView.reload();
         }
     }
 }

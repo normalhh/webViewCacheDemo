@@ -31,7 +31,6 @@ public class PermissionsChecker {
 
     // 判断是否缺少权限
     private boolean lacksPermission(String permission) {
-        return ContextCompat.checkSelfPermission(mContext, permission) ==
-                PackageManager.PERMISSION_DENIED;
+        return ContextCompat.checkSelfPermission(mContext, permission) == PackageManager.PERMISSION_DENIED;
     }
 }

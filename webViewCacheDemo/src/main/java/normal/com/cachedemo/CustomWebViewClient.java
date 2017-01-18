@@ -16,6 +16,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.blankj.utilcode.utils.EmptyUtils;
 import com.blankj.utilcode.utils.StringUtils;
 import com.orhanobut.logger.Logger;
 
@@ -27,14 +28,17 @@ import com.orhanobut.logger.Logger;
  * Desc: CustomWebViewClient is using for...
  */
 
-public class CustomWebViewClient extends WebViewClient {
+class CustomWebViewClient extends WebViewClient {
+
     private ResourceUrlCache resourceUrlCache = new ResourceUrlCache();
 
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
         return super.shouldOverrideUrlLoading(view, url);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         return super.shouldOverrideUrlLoading(view, request);
@@ -64,7 +68,6 @@ public class CustomWebViewClient extends WebViewClient {
     @Override
     public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
 
-
         return super.shouldInterceptRequest(view, url);
     }
 
@@ -78,26 +81,26 @@ public class CustomWebViewClient extends WebViewClient {
         if (curDomain == null) {
             return null;
         }
-        Logger.d("shouldInterceptRequest url " + request.getUrl().toString());
         //读取当前webview正准备加载URL资源
         String url = request.getUrl().toString();
         try {
             //根据资源url获取一个你要缓存到本地的文件名，一般是URL的MD5
             String resFileName = getResourcesFileName(url);
-            if (resFileName == null || "".equals(resFileName)) {
+            if (EmptyUtils.isEmpty(resFileName) || "favicon.ico".equals(resFileName) || resFileName.contains("iplookup") || resFileName
+                    .contains("userlogin.do")) {
                 return null;
             }
             //这里是处理本地缓存的URL，缓存到本地，或者已经缓存过的就直接返回而不去网络进行加载
-            this.resourceUrlCache.register(url, getResourcesFileName(url),
-                    request.getRequestHeaders().get("Accept"), "UTF-8", ResourceUrlCache.ONE_MONTH);
+            this.resourceUrlCache.register(url, url.replace(BaseApplication.properties.getProperty("SERVERURL"), ""), request
+                    .getRequestHeaders().get("Accept"), "UTF-8", ResourceUrlCache.ONE_HOUR);
             return this.resourceUrlCache.load(url);
         } catch (Exception e) {
-            Logger.e(String.valueOf(e));
+            Logger.e(e.getMessage());
         }
         return null;
     }
 
-    private String getResourcesFileName(String url) {
+    public String getResourcesFileName(String url) {
         String name = url.substring(url.lastIndexOf("/") + 1, url.length());
         if (!StringUtils.isEmpty(name)) {
             return name;

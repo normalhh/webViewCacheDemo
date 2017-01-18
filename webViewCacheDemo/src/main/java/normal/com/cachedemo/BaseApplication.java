@@ -6,6 +6,8 @@ import android.content.Context;
 import com.blankj.utilcode.utils.Utils;
 import com.orhanobut.logger.Logger;
 
+import java.util.Properties;
+
 /**
  * Created by Android Studio.
  * User: Anonymous
@@ -15,14 +17,15 @@ import com.orhanobut.logger.Logger;
  */
 
 public class BaseApplication extends Application {
-    public static Context applicationContext;
-
+    public Context applicationContext;
+    public static Properties properties;
     @Override
     public void onCreate() {
         super.onCreate();
         applicationContext = getApplicationContext();
         Logger.init("Anonymous");
         Utils.init(applicationContext);
+        properties = MyPropertiesUtil.getProperties(applicationContext);
     }
 
     @Override

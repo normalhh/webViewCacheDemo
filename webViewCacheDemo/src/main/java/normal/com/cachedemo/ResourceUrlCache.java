@@ -2,6 +2,7 @@ package normal.com.cachedemo;
 
 import android.webkit.WebResourceResponse;
 
+import com.blankj.utilcode.utils.FileUtils;
 import com.orhanobut.logger.Logger;
 
 import java.io.File;
@@ -28,18 +29,21 @@ import java.util.concurrent.FutureTask;
 
 public class ResourceUrlCache {
 
+    private Map<String, CacheEntity> cacheEntries = new HashMap<>();
     private static final long ONE_SECOND = 1000L;
     private static final long ONE_MINUTE = 60L * ONE_SECOND;
     static final long ONE_HOUR = 60 * ONE_MINUTE;
     static final long ONE_DAY = 24 * ONE_HOUR;
     static final long ONE_MONTH = 30 * ONE_DAY;
 
+    private static String CACHEPATH = "";
+
     private static final LinkedHashMap<String, Callable<Boolean>> queueMap = new LinkedHashMap<>();
 
 
     private static class CacheEntity {
-        public String url;
-        public String fileName;
+        String url;
+        String fileName;
         String mimeType;
         public String encoding;
         long maxAgeMillis;
@@ -53,30 +57,25 @@ public class ResourceUrlCache {
         }
     }
 
-    private Map<String, CacheEntity> cacheEntries = new HashMap<>();
-    private File rootDir = null;
-
     ResourceUrlCache() {
-        //本地缓存路径，请在调试中自行修改
-        this.rootDir = DiskUtil.getDiskCacheDir(BaseApplication.applicationContext);
+        CACHEPATH = BaseApplication.properties.getProperty("CACHEPATH");
     }
 
-    public void register(String url, String cacheFileName, String mimeType, String encoding, long maxAgeMillis) {
+    void register(String url, String cacheFileName, String mimeType, String encoding, long maxAgeMillis) {
         CacheEntity entity = new CacheEntity(url, cacheFileName, mimeType, encoding, maxAgeMillis);
         this.cacheEntries.put(url, entity);
     }
 
     // 这个方法是缓存资源文件
-    public WebResourceResponse load(final String url) {
+    WebResourceResponse load(final String url) {
         try {
             final CacheEntity cacheEntity = this.cacheEntries.get(url);
             if (cacheEntity == null) {
                 return null;
             }
 
-            final File cachedFile = new File(this.rootDir.getAbsolutePath()+ File.separator + cacheEntity.fileName);
-            Logger.d("cachedFile is " + cachedFile);
-            if (cachedFile.exists() && isReadFromCache(url)) {
+            final File cachedFile = new File(CACHEPATH + cacheEntity.fileName);
+            if (cachedFile.exists() && !cachedFile.getName().contains(".jsp")) {
                 //还没有下载完,在快速切换URL的时候，可能会有很多task并没有及时完成，所以这里需要一个map用于存储正在下载的URL，下载完成后需要移除相应的task
                 if (queueMap.containsKey(url)) {
                     return null;
@@ -96,7 +95,8 @@ public class ResourceUrlCache {
                 }
                 return new WebResourceResponse(cacheEntity.mimeType, cacheEntity.encoding, new FileInputStream(cachedFile));
             } else {
-                if (!queueMap.containsKey(url)) {
+                if (!queueMap.containsKey(url) && !url.startsWith("file:///") && !url.contains("iplookup.php") && !url.contains("login" +
+                        ".do")) {
                     queueMap.put(url, new Callable<Boolean>() {
                         @Override
                         public Boolean call() throws Exception {
@@ -115,28 +115,47 @@ public class ResourceUrlCache {
                                     queueMap.remove(url);
                                 }
                             } catch (InterruptedException | ExecutionException e) {
-                                Logger.e(String.valueOf(e));
+                                Logger.e(e.getMessage());
                             }
                         }
                     });
                 }
             }
         } catch (Exception e) {
-            Logger.e("Error reading file over network: " + String.valueOf(e));
+            Logger.e("Error reading file over network: " + e.getMessage());
         }
         return null;
     }
 
     //这个方法是资源下载
     private boolean downloadAndStore(final String url, final CacheEntity cacheEntity) throws IOException {
-        FileOutputStream fileOutputStream = null;
-        InputStream urlInput = null;
+        FileOutputStream fileOutputStream;
+        InputStream urlInput;
         try {
             URL urlObj = new URL(url);
             URLConnection urlConnection = urlObj.openConnection();
             urlInput = urlConnection.getInputStream();
-            String tempFilePath = ResourceUrlCache.this.rootDir.getAbsolutePath() + File.separator + cacheEntity.fileName + ".temp";
-            Logger.d(tempFilePath);
+            String[] dirAndFile;
+            String tempFilePath = BaseApplication.properties.getProperty("CACHEPATH");
+            if (cacheEntity.fileName.contains("/")) {
+                dirAndFile = cacheEntity.fileName.split("/");
+                Logger.d(dirAndFile);
+                if (dirAndFile.length > 1) {
+                    for (int i = 0; i < dirAndFile.length - 1; i++) {
+                        tempFilePath += dirAndFile[i] + File.separator;
+                        Logger.d(tempFilePath);
+                    }
+                }
+                FileUtils.createOrExistsDir(tempFilePath);
+                tempFilePath += dirAndFile[dirAndFile.length - 1] + ".temp";
+                Logger.d("有新的目录：" + tempFilePath);
+            } else {
+                Logger.d("没有新的目录：" + tempFilePath);
+                FileUtils.createOrExistsDir(tempFilePath);
+                tempFilePath += cacheEntity.fileName + ".temp";
+                FileUtils.createOrExistsFile(tempFilePath);
+            }
+
             File tempFile = new File(tempFilePath);
             fileOutputStream = new FileOutputStream(tempFile);
             byte[] buffer = new byte[1024];
@@ -148,24 +167,15 @@ public class ResourceUrlCache {
             File lastFile = new File(tempFilePath.replace(".temp", ""));
             boolean renameResult = tempFile.renameTo(lastFile);
             if (!renameResult) {
-                Logger.w("rename file failed, " + tempFilePath);
+                Logger.d("rename file failed, " + tempFilePath);
             }
+            urlInput.close();
+            fileOutputStream.close();
             return true;
         } catch (Exception e) {
-            Logger.e(String.valueOf(e));
-        } finally {
-            if (urlInput != null) {
-                urlInput.close();
-            }
-            if (fileOutputStream != null) {
-                fileOutputStream.close();
-            }
+            Logger.e(e.getMessage());
         }
         return false;
-    }
-
-    private boolean isReadFromCache(String url) {
-        return true;
     }
 
 }

@@ -34,7 +34,7 @@ public class ThreadPoolManager {
                 threadPool.execute(runnable);
             }
         } catch (Exception e) {
-            Logger.e(String.valueOf(e));
+            Logger.e(e.getMessage());
         }
     }
 
@@ -42,11 +42,11 @@ public class ThreadPoolManager {
      * @param callback 异步任务
      * @return 你可以获取相应的执行结果
      */
-    public FutureTask addTaskCallback(Callable<Boolean> callback) {
+    FutureTask<Boolean> addTaskCallback(Callable<Boolean> callback) {
         if (callback == null) {
             return null;
         } else {
-            FutureTask futureTask = new FutureTask<>(callback);
+            FutureTask<Boolean> futureTask = new FutureTask<>(callback);
             threadPool.submit(futureTask);
             return futureTask;
         }
